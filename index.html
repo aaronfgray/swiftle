@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sWiftle</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+#app{max-width:500px;width:100%;margin:0 auto;padding:1rem;text-align:center}
+#header{border-bottom:1px solid #e0e0e0;padding-bottom:0.75rem;margin-bottom:1rem}
+#title{font-size:28px;font-weight:700;letter-spacing:3px;color:#1a1a1a}
+#subtitle{font-size:12px;color:#888;margin-top:2px}
+#date-label{font-size:12px;color:#aaa;margin-top:2px}
+#board{display:grid;grid-template-rows:repeat(6,1fr);gap:5px;margin:1rem auto;width:fit-content}
+.row{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.tile{width:58px;height:58px;border:2px solid #d3d6da;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;border-radius:4px;color:#1a1a1a;background:#fff;transition:background 0.3s,border-color 0.3s,color 0.3s;text-transform:uppercase;user-select:none}
+.tile.filled{border-color:#888;animation:pop 0.1s ease}
+.tile.correct{background:#3B6D11;border-color:#3B6D11;color:#fff}
+.tile.present{background:#c9800a;border-color:#c9800a;color:#fff}
+.tile.absent{background:#787c7e;border-color:#787c7e;color:#fff}
+.tile.shake{animation:shake 0.5s ease}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+@keyframes flipIn{0%{transform:rotateX(0)}50%{transform:rotateX(-90deg)}}
+@keyframes flipOut{50%{transform:rotateX(-90deg)}100%{transform:rotateX(0)}}
+#keyboard{margin-top:1rem}
+.kb-row{display:flex;justify-content:center;gap:5px;margin-bottom:5px}
+.key{height:58px;min-width:40px;padding:0 8px;border:none;border-radius:4px;background:#d3d6da;color:#1a1a1a;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,color 0.2s;font-family:inherit}
+.key:hover{background:#bbb}
+.key.wide{min-width:60px;font-size:12px}
+.key.correct{background:#3B6D11;color:#fff}
+.key.present{background:#c9800a;color:#fff}
+.key.absent{background:#787c7e;color:#fff}
+#msg{min-height:32px;font-size:14px;color:#1a1a1a;margin:0.5rem 0;font-weight:700;background:#1a1a1a;color:#fff;border-radius:4px;padding:4px 12px;display:inline-block;opacity:0;transition:opacity 0.2s}
+#msg.visible{opacity:1}
+#end-panel{margin-top:1.5rem;padding:1.25rem;background:#f9f9f9;border-radius:8px;border:1px solid #e0e0e0}
+#end-panel h2{font-size:18px;font-weight:700;margin-bottom:0.4rem}
+#end-answer{font-size:15px;color:#444;margin-bottom:2px}
+#era-tag{font-size:13px;color:#888;margin-bottom:1rem}
+#share-btn{background:#3B6D11;color:#fff;border:none;padding:12px 24px;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;width:100%;font-family:inherit}
+#share-btn:hover{background:#27500A}
+#copy-confirm{font-size:13px;color:#3B6D11;margin-top:8px;min-height:20px;font-weight:600}
+@media(prefers-color-scheme:dark){
+  body{background:#121213;color:#fff}
+  #title{color:#fff}
+  #header{border-color:#3a3a3c}
+  .tile{border-color:#3a3a3c;background:#121213;color:#fff}
+  .tile.filled{border-color:#999}
+  .key{background:#818384;color:#fff}
+  .key:hover{background:#6a6a6a}
+  #msg{background:#fff;color:#121213}
+  #end-panel{background:#1e1e1f;border-color:#3a3a3c}
+  #end-answer{color:#ccc}
+  #era-tag{color:#888}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="title">sWiftle</div>
+    <div id="subtitle">Taylor Swift word game</div>
+    <div id="date-label"></div>
+  </div>
+  <div id="msg"></div>
+  <div id="board"></div>
+  <div id="keyboard"></div>
+  <div id="end-panel" style="display:none">
+    <h2 id="end-title"></h2>
+    <p id="end-answer"></p>
+    <p id="era-tag"></p>
+    <button id="share-btn">Copy results</button>
+    <div id="copy-confirm"></div>
+  </div>
+</div>
+<script>
+const WORDS=[
+  {w:"SHAKE",src:"Song title",era:"1989"},
+  {w:"LOVER",src:"Album name",era:"Lover"},
+  {w:"EXILE",src:"Song title",era:"folklore"},
+  {w:"BLANK",src:"Song title",era:"1989"},
+  {w:"EIGHT",src:"Song title",era:"folklore"},
+  {w:"CRUEL",src:"Song title",era:"reputation"},
+  {w:"STYLE",src:"Song title",era:"1989"},
+  {w:"CLEAN",src:"Song title",era:"1989"},
+  {w:"READY",src:"Lyric",era:"Fearless"},
+  {w:"NIGHT",src:"Lyric",era:"1989"},
+  {w:"HEART",src:"Lyric",era:"Fearless"},
+  {w:"TEARS",src:"Lyric",era:"Red"},
+  {w:"CHASE",src:"Lyric",era:"Fearless"},
+  {w:"DRESS",src:"Song title",era:"reputation"},
+  {w:"PAPER",src:"Song title",era:"Midnights"},
+  {w:"RINGS",src:"Song title",era:"folklore"},
+  {w:"SEVEN",src:"Song title",era:"folklore"},
+  {w:"STORY",src:"Song title",era:"Fearless"},
+  {w:"STILL",src:"Lyric",era:"The Tortured Poets Department"},
+  {w:"KARMA",src:"Song title",era:"Midnights"},
+  {w:"QUEEN",src:"Lyric",era:"reputation"},
+  {w:"MAPLE",src:"Lyric",era:"evermore"},
+  {w:"PARIS",src:"Song title",era:"Midnights"},
+  {w:"MARCH",src:"Lyric",era:"evermore"},
+  {w:"SWIFT",src:"Name",era:"All eras"},
+  {w:"DREAM",src:"Lyric",era:"Fearless"},
+  {w:"SWEET",src:"Lyric",era:"folklore"},
+  {w:"SMOKE",src:"Lyric",era:"reputation"},
+  {w:"GHOST",src:"Lyric",era:"folklore"},
+  {w:"MAGIC",src:"Lyric",era:"Lover"},
+  {w:"SPARK",src:"Lyric",era:"Fearless"},
+  {w:"GLOOM",src:"Lyric",era:"evermore"},
+  {w:"TIRED",src:"Lyric",era:"The Tortured Poets Department"},
+  {w:"TRADE",src:"Lyric",era:"Midnights"},
+  {w:"TOUCH",src:"Lyric",era:"Lover"},
+  {w:"PIANO",src:"Lyric",era:"folklore"},
+  {w:"STONE",src:"Lyric",era:"evermore"},
+  {w:"BRAVE",src:"Lyric",era:"Speak Now"},
+  {w:"LIGHT",src:"Lyric",era:"1989"},
+  {w:"CHAIN",src:"Song title",era:"evermore"},
+  {w:"PEACE",src:"Song title",era:"folklore"},
+  {w:"CLONE",src:"Lyric",era:"The Tortured Poets Department"},
+  {w:"ANGER",src:"Lyric",era:"Midnights"},
+  {w:"ACHES",src:"Lyric",era:"The Tortured Poets Department"},
+  {w:"GLOWS",src:"Lyric",era:"Lover"},
+  {w:"LILAC",src:"Lyric",era:"evermore"},
+  {w:"BROKE",src:"Lyric",era:"Red"},
+  {w:"CRIED",src:"Lyric",era:"Fearless"},
+  {w:"BLOWN",src:"Lyric",era:"reputation"},
+  {w:"DEBUT",src:"Era word",era:"Taylor Swift"},
+  {w:"VAULT",src:"Era word",era:"Taylor's Version"},
+  {w:"CRASH",src:"Lyric",era:"Midnights"},
+  {w:"BURNS",src:"Lyric",era:"Red"},
+  {w:"DROVE",src:"Lyric",era:"Red"},
+  {w:"WATER",src:"Lyric",era:"folklore"},
+  {w:"SCORE",src:"Lyric",era:"reputation"},
+  {w:"LACED",src:"Lyric",era:"folklore"},
+  {w:"TIDAL",src:"Lyric",era:"folklore"},
+  {w:"WASTE",src:"Lyric",era:"Red"},
+  {w:"SOLAR",src:"Lyric",era:"Midnights"},
+  {w:"DYING",src:"Lyric",era:"The Tortured Poets Department"},
+];
+
+const VALID=new Set(WORDS.map(x=>x.w).concat(["ABOUT","ABODE","ABOVE","ACHED","ACRES","ACTED","ACUTE","ADAGE","ADAPT","ADDED","ADEPT","ADMIT","ADOBE","ADOPT","ADULT","AFTER","AGAIN","AHEAD","AIDED","AIMED","AIRED","AISLE","ALBUM","ALERT","ALIBI","ALIGN","ALIKE","ALIVE","ALLAY","ALLEY","ALLOT","ALLOW","ALOFT","ALONE","ALONG","ALOOF","ALOUD","ALPHA","ALTAR","ALTER","ANGEL","ANGLE","ANGRY","ANKLE","ANNEX","ANTIC","ANVIL","APART","APPLE","APPLY","ARBOR","ARDOR","ARENA","ARGUE","ARISE","ARMOR","AROMA","AROSE","ARRAY","ARROW","ARSON","ASIDE","ASKED","ATONE","ATTIC","AUDIT","AVAIL","AVERT","AVOID","AWAKE","AWARD","AWFUL","AWOKE","AZURE","BADGE","BADLY","BAKED","BASIC","BASIS","BATCH","BEGUN","BEING","BELOW","BENCH","BIOME","BISON","BLAZE","BLEAK","BLEED","BLESS","BLINK","BLISS","BLITZ","BLOCK","BLOOD","BLOOM","BOOST","BOUND","BRACE","BRAIN","BRAND","BREAD","BREAK","BREED","BRIEF","BRINE","BRING","BRINK","BRISK","BROOD","BROOK","BROOM","BROTH","BROWN","BRUSH","BUILD","BUILT","BULGE","BULLY","BUNCH","BURST","CABIN","CANDY","CARRY","CAUSE","CEDAR","CHALK","CHARM","CHART","CHEAP","CHECK","CHEEK","CHEER","CHESS","CHEST","CHIEF","CHILD","CHIPS","CHOIR","CHOSE","CIVIC","CIVIL","CLAIM","CLANG","CLASH","CLASS","CLEAR","CLIMB","CLING","CLOCK","CLOSE","CLOTH","CLOWN","CLUMP","COACH","COMET","COMIC","COMMA","CORAL","COURT","COVER","CRACK","CRAFT","CRANE","CRAVE","CRAWL","CREAK","CREAM","CREEK","CREEP","CREST","CRISP","CROAK","CROOK","CROSS","CROWD","CROWN","CRUDE","CRUMB","CRUST","CURLY","CURRY","CURVE","CYCLE","DAILY","DAIRY","DAISY","DANCE","DANDY","DATED","DEALT","DECOY","DEFER","DELAY","DELTA","DENSE","DEPTH","DERBY","DEVIL","DISCO","DIZZY","DODGE","DOLLY","DOUBT","DOUGH","DRAFT","DRAIN","DRAPE","DRAWL","DREAD","DRIFT","DRILL","DRINK","DRIVE","DROOP","DROWN","DRUNK","DWELL","EAGER","EARLY","EARNS","EERIE","ELBOW","ELDER","ELECT","ELITE","EMBER","EMPTY","ENDED","ENTRY","EQUAL","ESSAY","EVERY","EXACT","EXIST","EXTRA","FABLE","FAINT","FAIRY","FAITH","FALSE","FANCY","FLAIR","FLAKE","FLAME","FLANK","FLARE","FLASH","FLASK","FLEET","FLESH","FLICK","FLING","FLOCK","FLOOD","FLOOR","FLORA","FLOSS","FLOUR","FLOWN","FLUFF","FLUKE","FOCUS","FOGGY","FOLLY","FORCE","FORGE","FOUND","FRAME","FRANK","FRAUD","FRESH","FRONT","FROST","FROZE","FULLY","FUNKY","FUNNY","GAMES","GAUGE","GIDDY","GIVEN","GLADE","GLARE","GLEAM","GLIDE","GLINT","GLOSS","GLORY","GLOVE","GRACE","GRADE","GRAIN","GRAND","GRANT","GRASP","GRASS","GRATE","GRAVE","GRAZE","GREED","GREET","GRIEF","GRIND","GROAN","GROOM","GROSS","GROUP","GROVE","GROWL","GROWN","GRUFF","GUARD","GUILE","GUSTO","HAPPY","HARSH","HASTE","HAUNT","HAVEN","HINGE","HOARD","HOBBY","HOLLY","HONEY","HONOR","HORSE","HOTEL","HOUND","HUMAN","HUMID","HUMOR","HURRY","HUSKY","IDEAL","IMAGE","IMPLY","INDIE","INFER","INNER","INPUT","IRONY","IVORY","JEWEL","JOKER","JUICE","JUMBO","KNACK","KNEEL","KNIFE","KNOCK","KNOWN","LABEL","LARGE","LASER","LATER","LAYER","LEMON","LEVEL","LINER","LIVER","LOCAL","LODGE","LOFTY","LOGIC","LONER","LOYAL","LUCID","LUMPY","LUNAR","LYRIC","MANOR","MATCH","MERCY","MERIT","METAL","MINOR","MIXED","MODEL","MONEY","MONTH","MOODY","MORAL","MOTOR","MOUNT","MOUTH","MOVIE","MUDDY","MURKY","NAIVE","NOBLE","NOISE","NORTH","NOTED","NOVEL","NURSE","OCCUR","OCEAN","OFFER","OFTEN","OLIVE","ONSET","OPERA","ORBIT","ORDER","ORGAN","OTHER","OUTER","OXIDE","PAINT","PANDA","PANEL","PANIC","PASTA","PATCH","PAUSE","PEARL","PERIL","PIVOT","PLACE","PLAIN","PLANE","PLANK","PLANT","PLATE","PLAZA","PLEAD","PLUME","PLUMP","POINT","POISE","POLAR","PORCH","POUND","POWER","PRIME","PRINT","PRISM","PRIZE","PROBE","PRONE","PROOF","PROSE","PROUD","PROVE","PUPIL","PURGE","QUIRK","QUOTA","QUOTE","RADAR","RADIO","RAISE","RALLY","RANCH","RANGE","RAPID","RATIO","REACH","REALM","REBEL","REIGN","RELAY","RELIC","REMIX","REPAY","RESET","RIDGE","RIFLE","RIVAL","RIVER","RISKY","ROAST","ROBOT","ROCKY","ROUGH","ROUND","ROYAL","RUMOR","RUSTY","SADLY","SAINT","SANDY","SAUCE","SCALE","SCAMP","SCARE","SCARF","SCENE","SCOLD","SCONE","SCOOP","SCOPE","SCORN","SCOUT","SCRAP","SEIZE","SENSE","SERVE","SHARE","SHARP","SHELF","SHELL","SHIFT","SHINE","SHIRT","SHOCK","SHORE","SHORT","SHOUT","SHOVE","SHOWN","SHRED","SHRUG","SIGMA","SINCE","SIREN","SKATE","SKILL","SKIRT","SLACK","SLASH","SLEEP","SLEET","SLICK","SLIDE","SLING","SLOPE","SLOSH","SLUMP","SMART","SMEAR","SMELL","SMILE","SNACK","SNARE","SNEAK","SNEER","SNIFF","SNORE","SOLID","SOLVE","SORRY","SOUTH","SPACE","SPARE","SPELL","SPEND","SPILL","SPINE","SPITE","SPLIT","SPOON","SPORT","SPOUT","SPREE","STAMP","STAIN","STALE","STAND","STARE","START","STATE","STEAL","STEAM","STEEL","STEEP","STEER","STERN","STICK","STIFF","STING","STOCK","STOMP","STOOP","STORE","STORM","STOUT","STOVE","STRAP","STRAY","STRIP","STRUT","STUCK","STUNT","SURGE","SWAMP","SWEAR","SWEAT","SWEEP","SWELL","SWEPT","SWIRL","SWOON","TABLE","TAKEN","TALLY","TAUNT","TENSE","THANK","THICK","THING","THINK","THIRD","THORN","THREE","THREW","THROW","THUMB","TIGER","TIGHT","TIMER","TITAN","TODAY","TOKEN","TOTAL","TOUGH","TOWER","TOXIC","TRACK","TRAIL","TRAIN","TRASH","TRIAL","TROOP","TRUCK","TRULY","TRUNK","TRUST","TRUTH","TWEED","TWICE","TWIRL","TWIST","ULTRA","UNIFY","UNION","UNITE","UNTIL","UPPER","URBAN","USHER","USUAL","UTTER","VALID","VALUE","VAPOR","VERSE","VIGOR","VIRAL","VISIT","VISTA","VIVID","VOGUE","VOICE","VOTER","WAGON","WALTZ","WATCH","WEARY","WEAVE","WEDGE","WEIRD","WHALE","WHEAT","WHEEL","WHILE","WHIRL","WHISK","WHITE","WHOLE","WITCH","WITTY","WOMEN","WORLD","WORRY","WORSE","WORST","WORTH","WOULD","WOUND","WRATH","WRIST","WRITE","WROTE","YACHT","YEARN","YIELD","YOUNG","YOURS","YOUTH","ZESTY"]));
+
+function getDailyWord(){
+  const start=new Date(2025,0,1);
+  const now=new Date();
+  const diff=Math.floor((now-start)/(1000*60*60*24));
+  const five=WORDS.filter(x=>x.w.length===5);
+  return five[diff%five.length];
+}
+
+const todayEntry=getDailyWord();
+const TARGET=todayEntry.w;
+const MAX=6;
+let currentRow=0,currentCol=0,currentGuess=[],gameOver=false;
+const tiles=[],keyMap={};
+
+const board=document.getElementById('board');
+for(let r=0;r<MAX;r++){
+  const row=document.createElement('div');
+  row.className='row';
+  tiles[r]=[];
+  for(let c=0;c<5;c++){
+    const t=document.createElement('div');
+    t.className='tile';
+    row.appendChild(t);
+    tiles[r][c]=t;
+  }
+  board.appendChild(row);
+}
+
+const KEYS=[['Q','W','E','R','T','Y','U','I','O','P'],['A','S','D','F','G','H','J','K','L'],['ENTER','Z','X','C','V','B','N','M','⌫']];
+const kb=document.getElementById('keyboard');
+KEYS.forEach(row=>{
+  const rowEl=document.createElement('div');
+  rowEl.className='kb-row';
+  row.forEach(k=>{
+    const btn=document.createElement('button');
+    btn.className='key'+(k.length>1?' wide':'');
+    btn.textContent=k;
+    btn.addEventListener('click',()=>handleKey(k==='⌫'?'BACKSPACE':k));
+    keyMap[k]=btn;
+    rowEl.appendChild(btn);
+  });
+  kb.appendChild(rowEl);
+});
+
+const d=new Date();
+document.getElementById('date-label').textContent=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+let msgTimer=null;
+function showMsg(m,dur=1800){
+  const el=document.getElementById('msg');
+  el.textContent=m;
+  el.classList.add('visible');
+  if(msgTimer)clearTimeout(msgTimer);
+  if(dur>0)msgTimer=setTimeout(()=>{el.classList.remove('visible')},dur);
+}
+
+function handleKey(k){
+  if(gameOver)return;
+  if(k==='BACKSPACE'){
+    if(currentCol>0){currentCol--;currentGuess.pop();tiles[currentRow][currentCol].textContent='';tiles[currentRow][currentCol].classList.remove('filled');}
+    return;
+  }
+  if(k==='ENTER'){
+    if(currentCol<5){showMsg('Not enough letters');shakeRow();return;}
+    const word=currentGuess.join('');
+    if(!VALID.has(word)){showMsg('Not in word list');shakeRow();return;}
+    submitGuess(word);
+    return;
+  }
+  if(/^[A-Z]$/.test(k)&&currentCol<5){
+    tiles[currentRow][currentCol].textContent=k;
+    tiles[currentRow][currentCol].classList.add('filled');
+    currentGuess.push(k);
+    currentCol++;
+  }
+}
+
+function shakeRow(){
+  for(let c=0;c<5;c++){
+    tiles[currentRow][c].classList.add('shake');
+    setTimeout(()=>tiles[currentRow][c].classList.remove('shake'),500);
+  }
+}
+
+function submitGuess(word){
+  const result=[];
+  const used=Array(5).fill(false);
+  for(let i=0;i<5;i++)result[i]=word[i]===TARGET[i]?'correct':'absent';
+  for(let i=0;i<5;i++)if(result[i]==='correct')used[i]=true;
+  for(let i=0;i<5;i++){
+    if(result[i]==='absent'){
+      for(let j=0;j<5;j++){
+        if(!used[j]&&word[i]===TARGET[j]){result[i]='present';used[j]=true;break;}
+      }
+    }
+  }
+  result.forEach((r,i)=>{
+    setTimeout(()=>{
+      const t=tiles[currentRow][i];
+      t.style.animation='flipIn 0.25s ease forwards';
+      setTimeout(()=>{
+        t.classList.add(r);
+        t.style.animation='flipOut 0.25s ease forwards';
+        setTimeout(()=>t.style.animation='',250);
+        const k=word[i];
+        const btn=keyMap[k];
+        if(btn&&r==='correct')btn.className='key correct';
+        else if(btn&&r==='present'&&!btn.classList.contains('correct'))btn.className='key present';
+        else if(btn&&r==='absent'&&!btn.classList.contains('correct')&&!btn.classList.contains('present'))btn.className='key absent';
+      },250);
+    },i*300);
+  });
+
+  setTimeout(()=>{
+    const won=word===TARGET;
+    currentRow++;currentCol=0;currentGuess=[];
+    if(won){
+      gameOver=true;
+      const msgs=['Genius!','Swiftie royalty!','Incredible!','Amazing!','Great!','Phew!'];
+      setTimeout(()=>{showMsg(msgs[Math.min(currentRow-1,5)],0);showEndPanel(true);},600);
+    } else if(currentRow===MAX){
+      gameOver=true;
+      setTimeout(()=>{showMsg(TARGET,0);showEndPanel(false);},600);
+    }
+  },5*300+300);
+}
+
+function showEndPanel(won){
+  const panel=document.getElementById('end-panel');
+  panel.style.display='block';
+  document.getElementById('end-title').textContent=won?'You got it! ✨':'Better luck next sWiftle!';
+  document.getElementById('end-answer').textContent='The word was '+TARGET+' ('+todayEntry.src+')';
+  document.getElementById('era-tag').textContent='Era: '+todayEntry.era;
+  document.getElementById('share-btn').onclick=shareResults;
+}
+
+function shareResults(){
+  const d=new Date();
+  const dateStr=d.toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
+  const emojiMap={correct:'🟩',present:'🟨',absent:'⬜'};
+  let text='sWiftle — '+dateStr+'\n';
+  for(let r=0;r<Math.min(currentRow,MAX);r++){
+    const guess=tiles[r].map(t=>t.textContent).join('');
+    const res=[];
+    const used=Array(5).fill(false);
+    for(let i=0;i<5;i++)res[i]=guess[i]===TARGET[i]?'correct':'absent';
+    for(let i=0;i<5;i++)if(res[i]==='correct')used[i]=true;
+    for(let i=0;i<5;i++){
+      if(res[i]==='absent'){
+        for(let j=0;j<5;j++){
+          if(!used[j]&&guess[i]===TARGET[j]){res[i]='present';used[j]=true;break;}
+        }
+      }
+    }
+    text+=res.map(r=>emojiMap[r]).join('')+'\n';
+  }
+  text+='\n✨ aaronfgray.github.io/swiftle';
+  navigator.clipboard.writeText(text).then(()=>{
+    document.getElementById('copy-confirm').textContent='Copied! Share with your Swifties ✨';
+    setTimeout(()=>document.getElementById('copy-confirm').textContent='',3000);
+  });
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.altKey||e.metaKey)return;
+  if(e.key==='Enter')handleKey('ENTER');
+  else if(e.key==='Backspace')handleKey('BACKSPACE');
+  else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toUpperCase());
+});
+</script>
+</body>
+</html>
